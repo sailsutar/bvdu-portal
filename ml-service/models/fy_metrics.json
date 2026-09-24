@@ -1,0 +1,155 @@
+{
+  "year": "fy",
+  "mode": "early_warning_ensemble_calibrated_fy",
+  "description": "First Year early-warning pipeline (dedicated FY artifacts). Calibrated ensemble; adaptive UTs; labels from full-term outcomes. Retrain with FY Excel via train_multi_year.py for production calibration.",
+  "stack": [
+    "RandomForestClassifier",
+    "HistGradientBoostingClassifier",
+    "VotingClassifier(soft)",
+    "CalibratedClassifierCV(isotonic)",
+    "Split conformal prediction (\u03b1=0.10)",
+    "Cost-sensitive At Risk threshold",
+    "Uplift prior for interventions",
+    "SHAP TreeExplainer on RF base"
+  ],
+  "n_samples": 3798,
+  "train_size": 2278,
+  "test_size": 1520,
+  "train_ratio": 0.6,
+  "test_ratio": 0.4,
+  "min_samples_leaf": 15,
+  "calibration_method": "isotonic",
+  "feature_cols": [
+    "attendance",
+    "mean_ut1",
+    "n_ut1_present",
+    "n_subjects",
+    "ut1_fail_count",
+    "ut1_fail_rate",
+    "n_absent_markers"
+  ],
+  "early_feature_cols": [
+    "attendance",
+    "mean_ut1",
+    "n_ut1_present",
+    "n_subjects",
+    "ut1_fail_count",
+    "ut1_fail_rate",
+    "n_absent_markers"
+  ],
+  "adaptive_unit_tests": true,
+  "label_uses_full_term": true,
+  "classes": [
+    "At Risk",
+    "Average",
+    "Good"
+  ],
+  "status_counts": {
+    "At Risk": 2459,
+    "Average": 1239,
+    "Good": 100
+  },
+  "accuracy_train": 0.9376646180860404,
+  "accuracy_test": 0.8927631578947368,
+  "accuracy_holdout": 0.8927631578947368,
+  "overfit_gap": 0.04490146019130359,
+  "cv_accuracy_mean": 0.8920497885028779,
+  "cv_accuracy_std": 0.0034920556246216235,
+  "brier_multiclass": 0.14192659752627557,
+  "log_loss": 0.24078358258742097,
+  "conformal": {
+    "alpha": 0.1,
+    "target_coverage": 0.9,
+    "q_hat": 0.5197669805939168,
+    "empirical_coverage": 0.9006578947368421,
+    "mean_set_size": 1.0151315789473685,
+    "n_calibration": 1520,
+    "method": "split_conformal_softmax_nonconformity"
+  },
+  "cost_policy": {
+    "at_risk_probability_threshold": 0.25,
+    "objective": "maximize_at_risk_recall_minus_0.35_fpr",
+    "holdout_score": 0.8879671763135542,
+    "note": "Predict At Risk if calibrated P(At Risk) >= threshold; else argmax class."
+  },
+  "uplift_prior": {
+    "method": "heuristic_intervenable_region",
+    "mean": 0.40712639461156147,
+    "p90": 0.6881872009335267,
+    "description": "Prior uplift score in [0,1]; refined by intervention outcomes in portal."
+  },
+  "fairness_slices": [
+    {
+      "slice": "low_att_<70",
+      "n": 1000,
+      "accuracy": 0.927
+    },
+    {
+      "slice": "mid_att_70_85",
+      "n": 424,
+      "accuracy": 0.8254716981132075
+    },
+    {
+      "slice": "high_att_>=85",
+      "n": 96,
+      "accuracy": 0.8333333333333334
+    }
+  ],
+  "feature_stats": {
+    "attendance": {
+      "mean": 63.84569041911916,
+      "std": 14.425182407115617,
+      "p05": 39.88435888516693,
+      "p95": 87.05754257868608
+    },
+    "mean_ut1": {
+      "mean": 8.958060251611313,
+      "std": 3.297761451355202,
+      "p05": 3.427321211861961,
+      "p95": 14.411367583176634
+    },
+    "n_ut1_present": {
+      "mean": 7.283307003686151,
+      "std": 3.2474605327113615,
+      "p05": 0.0,
+      "p95": 10.0
+    },
+    "n_subjects": {
+      "mean": 5.0,
+      "std": 1.0,
+      "p05": 5.0,
+      "p95": 5.0
+    },
+    "ut1_fail_count": {
+      "mean": 2.9839389152185363,
+      "std": 3.021476121807993,
+      "p05": 0.0,
+      "p95": 9.0
+    },
+    "ut1_fail_rate": {
+      "mean": 0.37663609502077117,
+      "std": 0.35946352822018307,
+      "p05": 0.0,
+      "p95": 1.0
+    },
+    "n_absent_markers": {
+      "mean": 1.4144286466561349,
+      "std": 1.3486001980265543,
+      "p05": 0.0,
+      "p95": 4.0
+    }
+  },
+  "regressor_mae": 4.020482317818722,
+  "regressor_r2": 0.8820544402046945,
+  "pass_ut_threshold": 8,
+  "model_params": {
+    "ensemble": "RF + HistGB soft vote, weights [1, 1.2]",
+    "calibration": "isotonic cv=3",
+    "rf_n_estimators": 150,
+    "rf_max_depth": 6
+  },
+  "source_file": "SY_CSE_Combined_Data_Structure (1).csv",
+  "split_type": "random_stratified_within_cohort",
+  "split_limitation": "Synthetic-from-seed + real rows: holdout is random stratified within the expanded cohort, not a cross-term generalization test.",
+  "data_note": "Trained on 3600 synthetic students generated from real upload (SY_CSE_Combined_Data_Structure (1).csv, n_seed=198) plus the real rows. Synthetic matches seed attendance/UT/absence distributions; labels via label_status() without attendance (no leak)."
+}

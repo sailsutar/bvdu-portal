@@ -1,0 +1,11 @@
+This parent-app targets Expo SDK 57 (matches current Expo Go from Play Store).
+
+On your PC after replacing parent-app files:
+
+  cd starter\parent-app
+  Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
+  Remove-Item -Force package-lock.json -ErrorAction SilentlyContinue
+  npm install
+  npx expo start -c
+
+Phone: Expo Go SDK 57 + same Wi-Fi + apiBaseUrl = http://YOUR_PC_IP:4000

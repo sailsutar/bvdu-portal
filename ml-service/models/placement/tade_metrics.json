@@ -1,0 +1,10 @@
+{
+  "accuracy_test": 0.8077777777777778,
+  "macro_f1_test": 0.804410055021261,
+  "readiness_rmse": 0.43577891415203507,
+  "conformal_coverage_test": 0.8996666666666666,
+  "conformal_avg_set_size": 1.2577777777777779,
+  "n_train": 42000,
+  "n_cal": 9000,
+  "n_test": 9000
+}

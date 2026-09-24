@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "BVU Parent",
+    "slug": "bvu-parent",
+    "version": "1.0.2",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0B1F3A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "edu.bvu.parent",
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B1F3A"
+      },
+      "package": "edu.bvu.parent",
+      "versionCode": 7,
+      "googleServicesFile": "./google-services.json",
+      "useNextNotificationsApi": true
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "color": "#0B1F3A"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://192.168.16.101:4000",
+      "eas": {
+        "projectId": "cfc18934-61cd-4bea-9c74-f6414a298a3a"
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+# Prefer ../docker-compose.yml from starter/
+# Kept for reference — full stack is in starter/docker-compose.yml
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
+    ports:
+      - "4000:4000"
+    env_file:
+      - ../backend/.env
+    environment:
+      ML_SERVICE_URL: http://ml:8001
+  ml:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.ml
+    ports:
+      - "8001:8001"

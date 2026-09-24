@@ -1,0 +1,39 @@
+{
+  "active_version": "v20260823_182330",
+  "promoted_at": "2026-08-23T18:23:30.082411Z",
+  "years": {
+    "sy": {
+      "accuracy_holdout": null,
+      "model_files": {
+        "classifier": "sy_rf_status_classifier.joblib",
+        "shap_base": "sy_rf_shap_base.joblib",
+        "metrics": "sy_metrics.json"
+      },
+      "status": "candidate"
+    },
+    "ty": {
+      "accuracy_holdout": null,
+      "model_files": {
+        "classifier": "ty_rf_status_classifier.joblib",
+        "shap_base": "ty_rf_shap_base.joblib",
+        "metrics": "ty_metrics.json"
+      },
+      "status": "candidate"
+    },
+    "final": {
+      "accuracy_holdout": null,
+      "model_files": {
+        "classifier": "final_rf_status_classifier.joblib",
+        "shap_base": "final_rf_shap_base.joblib",
+        "metrics": "final_metrics.json"
+      },
+      "status": "candidate"
+    }
+  },
+  "promote_rules": {
+    "min_holdout_accuracy": 0.7,
+    "max_overfit_gap": 0.15,
+    "require_conformal": true
+  },
+  "note": "Candidates become production when /mlops/promote accepts them after rule checks."
+}
