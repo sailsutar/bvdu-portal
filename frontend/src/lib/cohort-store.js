@@ -2,19 +2,23 @@
  * Server-backed academic cohort (marks + attendance + class).
  * Any size (100, 400, 2000+) is uploaded in chunks until every row is on Atlas.
  * localStorage is offline cache only — source of truth is MongoDB Atlas.
+ *
+ * Cross-device: always use VITE_API_URL (same as login). Never hardcode "".
+ * HTTP cache is disabled so phone/desktop always see the latest Atlas rows.
  */
 import { getSession, authHeaders } from "@/lib/auth";
 
 const EVENT = "bvu.cohort.updated";
 const LS_KEY = "bvu.cohort.cache.v1";
-const API_BASE = "";
+/** Must match auth.js — production web + API are often on different hosts */
+const API_BASE = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) || "";
 /** Rows per request — small enough for Atlas + weak networks; loop covers unlimited size */
 const SYNC_CHUNK = 60;
 const FETCH_PAGE = 2000;
 
 let cache = { students: [], loaded: false, source: null, fetchedAt: 0 };
-/** Reuse in-memory cohort across section changes (no re-download every nav). */
-const COHORT_TTL_MS = 15 * 60 * 1000;
+/** Short memory TTL only; every login uses force:true and bypasses this */
+const COHORT_TTL_MS = 2 * 60 * 1000;
 let inflightFetch = null;
 
 function emit() {
@@ -82,26 +86,34 @@ export async function fetchCohortFromServer(opts = {}) {
     return cache;
   }
 
-  if (!cache.loaded || !cache.students?.length) {
+  // force (login / after upload): drop memory + localStorage so every device starts clean
+  if (force) {
+    try {
+      localStorage.removeItem(LS_KEY);
+    } catch {
+      /* ignore */
+    }
+    cache = { students: [], loaded: false, source: null, fetchedAt: 0 };
+  } else if (!cache.loaded || !cache.students?.length) {
     hydrateCohortFromLocal();
   }
 
   const fresh =
+    !force &&
     cache.loaded &&
     Array.isArray(cache.students) &&
     cache.students.length > 0 &&
     cache.fetchedAt &&
     Date.now() - cache.fetchedAt < COHORT_TTL_MS;
 
-  if (!force && fresh) {
+  if (fresh) {
     return cache;
   }
 
-  // Also serve local-hydrated data immediately without blocking UI when not forcing
+  // Soft path: show local quickly, then refresh from Atlas in background
   if (!force && cache.loaded && cache.students?.length && !cache.fetchedAt) {
-    // soft refresh in background once
     if (!inflightFetch) {
-      inflightFetch = doFetchCohort().finally(() => {
+      inflightFetch = doFetchCohort({ force: false }).finally(() => {
         inflightFetch = null;
       });
     }
@@ -112,24 +124,33 @@ export async function fetchCohortFromServer(opts = {}) {
     return inflightFetch;
   }
 
-  inflightFetch = doFetchCohort().finally(() => {
+  inflightFetch = doFetchCohort({ force }).finally(() => {
     inflightFetch = null;
   });
   return inflightFetch;
 }
 
-async function doFetchCohort() {
+async function doFetchCohort({ force = false } = {}) {
   try {
     const all = [];
     let skip = 0;
     let total = Infinity;
+    const bust = force ? `&_t=${Date.now()}` : "";
     while (skip < total) {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 120000);
       try {
         const res = await fetch(
-          `${API_BASE}/api/cohort?limit=${FETCH_PAGE}&skip=${skip}`,
-          { headers: { ...authHeaders() }, signal: ctrl.signal }
+          `${API_BASE}/api/cohort?limit=${FETCH_PAGE}&skip=${skip}${bust}`,
+          {
+            headers: {
+              ...authHeaders(),
+              "Cache-Control": "no-cache",
+              Pragma: "no-cache",
+            },
+            cache: "no-store",
+            signal: ctrl.signal,
+          }
         );
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Failed to load cohort");
@@ -157,16 +178,19 @@ async function doFetchCohort() {
     emit();
     return cache;
   } catch (e) {
-    const local = readLocalCache();
-    if (local?.students?.length) {
-      cache = {
-        students: local.students,
-        loaded: true,
-        source: "local-cache-offline",
-        fetchedAt: Date.now(),
-      };
-      emit();
-      return cache;
+    // Only fall back to local cache if this is NOT a forced login/upload refresh
+    if (!force) {
+      const local = readLocalCache();
+      if (local?.students?.length) {
+        cache = {
+          students: local.students,
+          loaded: true,
+          source: "local-cache-offline",
+          fetchedAt: Date.now(),
+        };
+        emit();
+        return cache;
+      }
     }
     if (!cache.loaded) {
       cache = { students: [], loaded: true, source: "error", fetchedAt: Date.now() };

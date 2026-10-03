@@ -1,6 +1,7 @@
 import { authHeaders } from "@/lib/auth";
 
-const API_BASE = "";
+/** Same origin in local/dev (Vite proxy); production = VITE_API_URL (Render API) */
+const API_BASE = (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) || "";
 
 /** Default fetch timeout — mobile hotspots need more than a few seconds. */
 const DEFAULT_TIMEOUT_MS = 45000;

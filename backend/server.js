@@ -80,6 +80,8 @@ function corsOriginAllowed(origin) {
   return false;
 }
 app.set("trust proxy", 1);
+// Disable ETag so browsers never get HTTP 304 for cohort / student JSON after uploads
+app.set("etag", false);
 app.use(
   cors({
     origin: (origin, cb) => {
