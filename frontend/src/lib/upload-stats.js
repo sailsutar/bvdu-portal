@@ -1128,6 +1128,7 @@ function useDerived() {
       return {
         ...derived,
         students,
+        hasData: students.length > 0,
         stats: {
           ...derived.stats,
           totalStudents: students.length,
@@ -1146,6 +1147,7 @@ function useDerived() {
       return {
         ...derived,
         students: [],
+        hasData: false,
         stats: {
           ...derived.stats,
           totalStudents: 0,
@@ -1155,7 +1157,7 @@ function useDerived() {
         source: "empty",
       };
     }
-    return { ...derived, source: "uploaded" };
+    return { ...derived, hasData: true, source: "uploaded" };
   }, [uploads, serverCohort]);
 }
 function findStudentByPrn(students, prn) {
