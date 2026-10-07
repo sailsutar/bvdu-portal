@@ -193,7 +193,13 @@ function ReceivedFeedback({ items, stats, loading, onRefresh }) {
   }
 
   async function clearFeedback() {
-    const scope = yearFilter === "All" ? "ALL years (entire database)" : `year ${yearFilter} only`;
+    // Delete the rows actually shown (after year filter), not only docs whose yearLevel field matches.
+    // Many submits store year only on className, so deleteMany({ yearLevel: "SY" }) deleted 0.
+    const targets = yearFilter === "All" ? items : afterYear;
+    const scope =
+      yearFilter === "All"
+        ? "ALL years (entire database)"
+        : `year ${yearFilter} only (${targets.length} visible item(s))`;
     if (
       !confirm(
         `Permanently delete feedback for ${scope}? This cannot be undone.`
@@ -201,19 +207,35 @@ function ReceivedFeedback({ items, stats, loading, onRefresh }) {
     ) {
       return;
     }
+    if (!targets.length && yearFilter !== "All") {
+      alert("No feedback items in the current year filter to clear.");
+      return;
+    }
     setClearMsg("");
     try {
       const { api } = await import("@/lib/api");
-      const q = yearFilter !== "All" ? `?yearLevel=${encodeURIComponent(yearFilter)}` : "";
-      const d = await api(`/api/feedback${q}`, { method: "DELETE" });
+      const ids = targets
+        .map((f) => f._id || f.id)
+        .filter(Boolean)
+        .map((id) => String(id));
+      const d = await api("/api/feedback", {
+        method: "DELETE",
+        body: JSON.stringify({
+          clearAll: yearFilter === "All",
+          yearLevel: yearFilter === "All" ? null : yearFilter,
+          ids,
+        }),
+      });
+      const deleted = Number(d.deleted ?? d.deletedCount ?? 0);
       const msg =
         yearFilter === "All"
-          ? `All feedbacks cleared. Deleted ${d.deleted} record(s).`
-          : `Feedbacks cleared for ${yearFilter}. Deleted ${d.deleted} record(s).`;
+          ? `All feedbacks cleared. Deleted ${deleted} record(s).`
+          : `Feedbacks cleared for ${yearFilter}. Deleted ${deleted} record(s).`;
       setClearMsg(msg);
       alert(msg);
       setAgentSummary(null);
-      onRefresh?.();
+      // Force reload list from API so UI matches Mongo
+      if (typeof onRefresh === "function") await onRefresh();
     } catch (e) {
       alert(e.message || "Clear failed");
     }

@@ -537,13 +537,43 @@ app.get("/api/feedback/summary", requireAdmin, async (req, res) => {
 });
 
 
-/** Clear feedback (all or by yearLevel) — admin only; removes from MongoDB */
+/** Clear feedback (all, by yearLevel, or by explicit document ids) — admin only */
 app.delete("/api/feedback", requireAdmin, async (req, res) => {
   try {
-    const yearLevel = req.query.yearLevel ? String(req.query.yearLevel) : null;
-    const filter = yearLevel && yearLevel !== "All" ? { yearLevel } : {};
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const yearLevel =
+      (req.query.yearLevel && String(req.query.yearLevel)) ||
+      (body.yearLevel != null && body.yearLevel !== "" ? String(body.yearLevel) : null);
+    const ids = Array.isArray(body.ids) ? body.ids.map((x) => String(x)).filter(Boolean) : [];
+    const clearAll = body.clearAll === true;
+
+    let filter;
+    if (ids.length) {
+      filter = {
+        $or: [{ id: { $in: ids } }, { _id: { $in: ids.filter((id) => /^[a-fA-F0-9]{24}$/.test(id)) } }],
+      };
+    } else if (yearLevel && yearLevel !== "All") {
+      const y = String(yearLevel).toUpperCase();
+      filter = {
+        $or: [
+          { yearLevel: y },
+          { yearLevel: String(yearLevel) },
+          { className: new RegExp(y, "i") },
+          { displayGroup: new RegExp(y, "i") },
+        ],
+      };
+    } else if (clearAll || !yearLevel || yearLevel === "All") {
+      filter = {};
+    } else {
+      filter = {};
+    }
+
     const result = await Feedback.deleteMany(filter);
-    await writeAudit(req.auth.id, "feedback.clear", { deleted: result.deletedCount, yearLevel: yearLevel || "all" });
+    await writeAudit(req.auth.id, "feedback.clear", {
+      deleted: result.deletedCount,
+      yearLevel: yearLevel || "all",
+      byIds: ids.length,
+    });
     res.json({ ok: true, deleted: result.deletedCount });
   } catch (e) {
     res.status(500).json({ error: String(e.message || e) });
