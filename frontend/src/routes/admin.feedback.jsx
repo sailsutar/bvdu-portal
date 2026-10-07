@@ -3,6 +3,7 @@ import { useYearBatchSelection } from "@/lib/use-year-batch";
 import { normalizeYearLevel, YEAR_LABELS, YEAR_ORDER } from "@/lib/year-batch";
 import { SectionCard } from "@/components/portal/PortalShell";
 import { getSession, authHeaders } from "@/lib/auth";
+import { api } from "@/lib/api";
 
 function SentimentBadge({ value, note }) {
   const styles = {
@@ -421,14 +422,13 @@ function FeedbackAnalytics() {
   async function load() {
     setLoading(true);
     try {
-      const r = await fetch(`/api/feedback?teacherId=${encodeURIComponent(teacherId)}`, {
-        headers: { ...authHeaders() },
-      });
-      const d = await r.json();
+      // Always hit API host (VITE_API_URL on Render) — relative /api fails on bvdu-web
+      const d = await api(`/api/feedback?teacherId=${encodeURIComponent(teacherId)}&limit=500`);
       setItems(d.items || []);
       setStats(d.stats || { total: 0, good: 0, average: 0, bad: 0 });
       setTeacherSummary(d.teacherSummary || null);
-    } catch {
+    } catch (e) {
+      console.warn("[feedback] load failed", e?.message || e);
       setItems([]);
       setTeacherSummary(null);
     } finally {
