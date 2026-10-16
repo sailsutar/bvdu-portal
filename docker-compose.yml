@@ -1,0 +1,65 @@
+# BVU Portal — full stack on any machine with Docker
+# Usage:
+#   1. Copy backend/.env.example → backend/.env and set MONGODB_URI (Atlas recommended)
+#   2. docker compose up --build
+#   3. Open http://localhost:8080  (website)
+#      API http://localhost:4000   ML http://localhost:8001
+#
+# Parent APK apiBaseUrl (same LAN): http://YOUR_HOST_IP:4000
+# Production: put HTTPS reverse proxy in front and set apiBaseUrl to that URL.
+
+services:
+  ml:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.ml
+    container_name: bvu-ml
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 45s
+
+  backend:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.backend
+    container_name: bvu-backend
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    env_file:
+      - ./backend/.env
+    environment:
+      PORT: "4000"
+      ML_SERVICE_URL: http://ml:8001
+      NODE_ENV: production
+    depends_on:
+      - ml
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:4000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 8s
+      retries: 10
+      start_period: 40s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.frontend
+      args:
+        VITE_API_URL: ""
+    container_name: bvu-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+networks:
+  default:
+    name: bvu-net

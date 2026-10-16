@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+**/.env
+**/.git
+**/__pycache__
+**/*.pyc
+parent-app/node_modules
+parent-app/.expo
+**/.DS_Store
+**/android
+**/ios

@@ -1,0 +1,26 @@
+﻿node_modules/
+dist/
+.env
+.env.*
+!.env.example
+!.env.sample
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.expo/
+.gradle/
+android/**/debug.keystore
+.DS_Store
+Thumbs.db
+# Android generated files and local configuration
+parent-app/android/.gradle/
+parent-app/android/**/build/
+parent-app/android/**/.cxx/
+parent-app/android/local.properties
+parent-app/android/**/*.keystore
+parent-app/android/**/*.jks
+parent-app/android/**/*.apk
+parent-app/android/**/*.aab
+
+backend/GENAI.env.snippet

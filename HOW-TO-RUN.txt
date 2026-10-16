@@ -1,0 +1,60 @@
+BVU Portal — how to run
+=======================
+
+Prerequisites
+- Node.js 18+
+- Python 3.10+
+- MongoDB Atlas connection string (or local MongoDB)
+
+1) Configure backend environment
+   cd starter\backend
+   copy .env.example .env
+   Edit .env — paste MONGODB_URI (keep bvu_portal before ?). Template matches backend\.env.example:
+   PORT, ML_SERVICE_URL, MONGODB_URI, JWT_SECRET, passwords, MESSAGE_*, BREVO_*, TWILIO_*
+
+2) Install and start (Windows PowerShell / Command Prompt)
+
+cd starter\backend
+npm install
+# ensure .env has MONGODB_URI
+cd ..\frontend
+npm install
+cd ..\ml-service
+python -m pip install -r requirements.txt
+cd ..
+npm run dev
+
+Optional once (seed staff accounts if empty):
+  cd starter\backend
+  npm run seed
+
+3) Open the app
+   Frontend: http://localhost:5173
+   Backend:  http://localhost:4000
+   ML:       http://localhost:8001
+
+4) Default logins (change passwords in production)
+   System Admin:     ADMIN001 / (see .env / seed)
+   Head of Department: EMP001 / admin123
+   Teacher Guide:    TG001 / tg123
+   Student:          Permanent Registration Number / abc@123
+   Placement:        PC001 / PH001 (see seed)
+
+5) After start — who does what
+   System Admin → Upload academic data / Combine / Teacher Guide assignment
+   Head of Department → analytics, students, feedback, agents (data already in MongoDB)
+   Teacher Guide → assigned mentees only
+
+6) Messaging (optional)
+   In backend\.env set BREVO_* and/or TWILIO_*
+   MESSAGE_DRY_RUN=0 for live send
+
+Included: MongoDB Atlas, early-warning ML + SHAP, System Admin uploads,
+Teacher Guide assignment, placement TADE, parent messaging hooks.
+
+System design: docs\SYSTEM-DESIGN.md
+Also see: DEPLOYMENT.md
+
+=== Docker (any device) ===
+cd starter && docker compose up --build
+Website: http://localhost:8080

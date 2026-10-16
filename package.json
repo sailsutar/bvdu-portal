@@ -1,0 +1,17 @@
+{
+  "name": "bvu-portal",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:ml": "cd ml-service && python -m uvicorn serve:app --host 0.0.0.0 --port 8001",
+    "dev": "npx --yes concurrently@9.1.0 -n backend,frontend,ml -c blue,green,magenta -k false \"npm run dev:backend\" \"npx --yes wait-on@8.0.1 tcp:4000 && npm run dev:frontend\" \"npm run dev:ml\"",
+    "dev:app": "npx --yes concurrently@9.1.0 -n backend,frontend -c blue,green -k false \"npm run dev:backend\" \"npx --yes wait-on@8.0.1 tcp:4000 && npm run dev:frontend\"",
+    "ci": "npm run ci:backend && npm run ci:frontend",
+    "ci:backend": "npm install --prefix backend && node --check backend/server.js && node --check backend/src/year-cohort.js",
+    "ci:frontend": "npm install --prefix frontend && npm run build --prefix frontend",
+    "docs:list": "node -e \"console.log('See docs/SYSTEM-DESIGN.md')\"",
+    "dev:parent-app": "npm run start --prefix parent-app"
+  }
+}
