@@ -1,0 +1,43 @@
+# Fixed package: one student input path + staff tools
+
+## What changed vs earlier packs
+
+1. Student skills come from existing **Placement profile** (DSA / C / DBMS / AI-ML 1–5).
+2. On every placement profile **Save**, backend syncs into Employability S1 skills (no second student form).
+3. **Employability input** is **staff-only** (assessments, next action, results, HITL).
+4. **Employability Intelligence** remains the read-only dashboard.
+
+## Copy into your project
+
+### Backend → starter/backend/src/
+All employability-*.js from this zip including:
+  employability-from-placement.js   ← NEW bridge
+
+Replace or merge:
+  placement-routes.js   ← has sync hook on PUT /api/placement/me
+
+### Frontend → matching paths
+  routes/student.placement.jsx          ← updated help text + save message
+  components/employability/*            ← dashboard + staff input workspace
+  routes/admin.employability.jsx
+  routes/admin.employability-input.jsx
+  routes/admin.employability-research.jsx
+  routes/student.employability.jsx      ← dashboard only (no duplicate input)
+  routes/tg.employability.jsx
+  routes/placement.employability.jsx
+
+### server.js (if not already)
+  registerEmployabilityRoutes(app);
+  ensureEmployabilityIndexes + bootstrapEmployabilityS0 on startup
+
+### App.jsx / nav.js
+  Student: Employability Intelligence (dashboard) only — NOT a second skill form
+  Admin: Employability Intelligence + Employability input (staff) + Research
+  Optional: remove student "Employability input" nav if you added it earlier
+
+## Student flow
+1. Student → Placement profile → rate DSA/DBMS/… → Save
+2. Student → Employability Intelligence → see readiness/gaps (after skills sync)
+
+## Staff flow
+1. Admin/TG → Employability input → PRN → assessment / next action / result

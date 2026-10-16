@@ -3,13 +3,17 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { StatusBar } from "expo-status-bar";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Text, View } from "react-native";
 import Constants from "expo-constants";
 import LoginScreen from "./src/screens/LoginScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import ChildScreen from "./src/screens/ChildScreen";
 import NoticesScreen from "./src/screens/NoticesScreen";
-import { getToken } from "./src/lib/api";
+import {
+  extractMagicTokenFromUrl,
+  getToken,
+  redeemMagicToken,
+} from "./src/lib/api";
 
 const isExpoGo = Constants.appOwnership === "expo";
 let Notifications = null;
@@ -60,14 +64,53 @@ function MainTabs() {
 export default function App() {
   const [boot, setBoot] = useState(true);
   const [authed, setAuthed] = useState(false);
+  const [bootMsg, setBootMsg] = useState("");
   const navRef = useRef(null);
+
+  async function tryMagicUrl(url) {
+    const token = extractMagicTokenFromUrl(url);
+    if (!token) return false;
+    setBootMsg("Opening your child’s details…");
+    await redeemMagicToken(token);
+    setAuthed(true);
+    return true;
+  }
 
   useEffect(() => {
     (async () => {
+      try {
+        const initial = await Linking.getInitialURL();
+        if (initial) {
+          const ok = await tryMagicUrl(initial);
+          if (ok) {
+            setBoot(false);
+            return;
+          }
+        }
+      } catch (e) {
+        setBootMsg(e.message || "Link open failed");
+      }
       const t = await getToken();
       setAuthed(Boolean(t));
       setBoot(false);
     })();
+  }, []);
+
+  useEffect(() => {
+    const sub = Linking.addEventListener("url", ({ url }) => {
+      (async () => {
+        try {
+          const ok = await tryMagicUrl(url);
+          if (ok) {
+            setAuthed(true);
+            navRef.current?.navigate("Main");
+          }
+        } catch (e) {
+          setBootMsg(e.message || "Invalid or expired link");
+        }
+      })();
+    });
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {
@@ -83,8 +126,11 @@ export default function App() {
 
   if (boot) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
         <ActivityIndicator size="large" color="#0B1F3A" />
+        {!!bootMsg && (
+          <Text style={{ marginTop: 12, textAlign: "center", color: "#334155" }}>{bootMsg}</Text>
+        )}
       </View>
     );
   }

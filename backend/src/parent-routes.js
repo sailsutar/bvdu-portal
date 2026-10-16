@@ -14,6 +14,7 @@ import {
 } from "./db.js";
 import { normalizePhone } from "./parent-bot.js";
 import { requireAuth, requireTeacherGuide, signParentSession, PARENT_DEFAULT_PASSWORD } from "./auth.js";
+import { createParentMagicLink, verifyParentMagicToken } from "./parent-magic-link.js";
 
 
 async function sendExpoPush(messages) {
@@ -175,6 +176,96 @@ export function registerParentRoutes(app) {
       res.json(result);
     } catch (e) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+
+  /**
+   * Staff: create passwordless Parent-app link for one student.
+   * Body: { prn, parentPhone? } — phone falls back to contact master / academic.
+   */
+  app.post("/api/parent/magic-link", requireAuth, requireTeacherGuide, async (req, res) => {
+    try {
+      const prn = String(req.body?.prn || "").trim();
+      if (!prn) return res.status(400).json({ error: "prn required" });
+      const bg = await StudentBackground.findOne({ prn }).lean();
+      const academic = await AcademicRecord.findOne({ prn }).lean();
+      const phone =
+        req.body?.parentPhone ||
+        bg?.parentWhatsapp ||
+        bg?.parentMobile ||
+        academic?.phone ||
+        bg?.studentMobile ||
+        "";
+      const name = academic?.name || bg?.name || "";
+      const link = createParentMagicLink({ prn, parentPhone: phone, studentName: name });
+      await writeAudit(req.auth?.id || "staff", "parent.magic_link", { prn, phone: link.parentPhone });
+      res.json({ ok: true, ...link });
+    } catch (e) {
+      res.status(400).json({ error: e.message || String(e) });
+    }
+  });
+
+  /**
+   * Parent app: redeem magic token → full parent session (same APIs as login).
+   * Body: { token }
+   * Focus student is returned as focusPrn; all phone-linked children remain available.
+   */
+  app.post("/api/parent/magic-link/redeem", async (req, res) => {
+    try {
+      const token = String(req.body?.token || req.query?.token || "").trim();
+      if (!token) return res.status(400).json({ error: "token required" });
+      const payload = verifyParentMagicToken(token);
+      if (!payload) {
+        return res.status(401).json({ error: "Link expired or invalid. Ask the college to send a new message." });
+      }
+      const phone = payload.phone;
+      const focusPrn = String(payload.prn || "").trim();
+      const { key, rows } = await findLinkedByPhone(phone);
+      let linked = rows || [];
+      // Ensure the focus student is present even if contact list is incomplete
+      if (focusPrn && !linked.some((r) => String(r.prn) === focusPrn)) {
+        const academic = await AcademicRecord.findOne({ prn: focusPrn }).lean();
+        const bg = await StudentBackground.findOne({ prn: focusPrn }).lean();
+        linked = [
+          {
+            prn: focusPrn,
+            name: academic?.name || bg?.name || payload.name || focusPrn,
+            yearLevel: academic?.yearLevel || bg?.yearLevel,
+            batch: academic?.batch || bg?.batch,
+            parentMobile: phone,
+          },
+          ...linked,
+        ];
+      }
+      if (!linked.length) {
+        return res.status(401).json({
+          error: "No student linked to this link. Contact the college office.",
+        });
+      }
+      const phoneKey = key || phone;
+      const name = linked[0]?.name ? `Parent of ${linked[0].name}` : `Parent ${phoneKey}`;
+      await ensureParentUser(phoneKey, name);
+      const result = await signParentSession(
+        parentUserId(phoneKey),
+        phoneKey,
+        linked.map((r) => String(r.prn))
+      );
+      if (!result.ok) return res.status(401).json({ error: result.error || "Could not open session." });
+      await writeAudit(parentUserId(phoneKey), "auth.parent_magic", { phone: phoneKey, focusPrn, children: linked.length });
+      res.json({
+        ...result,
+        focusPrn,
+        children: linked.map((r) => ({
+          prn: r.prn,
+          name: r.name,
+          yearLevel: r.yearLevel,
+          batch: r.batch,
+        })),
+        via: "magic_link",
+      });
+    } catch (e) {
+      res.status(500).json({ error: e.message || String(e) });
     }
   });
 

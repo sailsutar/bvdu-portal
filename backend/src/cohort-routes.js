@@ -83,22 +83,14 @@ export function registerCohortRoutes(app) {
   /** Full student roster with marks — source of truth for the portal */
   app.get("/api/cohort", requireAuth, async (req, res) => {
     try {
-      // Prevent browser / CDN 304 stale cohort across devices after upload
-      res.set({
-        "Cache-Control": "no-store, no-cache, must-revalidate, private",
-        Pragma: "no-cache",
-        Expires: "0",
-      });
-      res.removeHeader?.("ETag");
-
       const limit = Math.min(100000, Math.max(1, parseInt(String(req.query.limit || "50000"), 10) || 50000));
       const skip = Math.max(0, parseInt(String(req.query.skip || "0"), 10) || 0);
+      const totalCount = await AcademicRecord.countDocuments({});
       const rows = await AcademicRecord.find({}).sort({ cls: 1, name: 1 }).skip(skip).limit(limit).lean();
-      const total = await AcademicRecord.countDocuments({});
-      res.status(200).json({
+      const total = await AcademicRecord.countDocuments();
+      res.json({
         total,
         limit,
-        skip,
         students: rows.map((r) => ({
           prn: r.prn,
           name: r.name,
@@ -132,7 +124,6 @@ export function registerCohortRoutes(app) {
         })),
         count: rows.length,
         source: "mongodb",
-        fetchedAt: new Date().toISOString(),
       });
     } catch (e) {
       res.status(500).json({ error: String(e.message || e) });
@@ -299,19 +290,11 @@ export function registerCohortRoutes(app) {
 
       let createdAccounts = 0;
       try {
-        // Mirror identity + attendance onto User so login list stays aligned with AcademicRecord
         createdAccounts = await ensureStudentAccounts(
-          slice
-            .map((s) => ({
-              prn: String(s.prn || s.id || "").trim(),
-              name: s.name,
-              attendance: s.attendance,
-              cls: s.cls || s.className,
-              className: s.className || s.cls,
-              email: s.email,
-              phone: s.phone,
-            }))
-            .filter((x) => x.prn)
+          slice.map((s) => ({
+            prn: String(s.prn || s.id || "").trim(),
+            name: s.name,
+          })).filter((x) => x.prn)
         );
       } catch {
         /* best-effort */

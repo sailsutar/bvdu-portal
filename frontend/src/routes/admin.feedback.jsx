@@ -3,7 +3,6 @@ import { useYearBatchSelection } from "@/lib/use-year-batch";
 import { normalizeYearLevel, YEAR_LABELS, YEAR_ORDER } from "@/lib/year-batch";
 import { SectionCard } from "@/components/portal/PortalShell";
 import { getSession, authHeaders } from "@/lib/auth";
-import { api } from "@/lib/api";
 
 function SentimentBadge({ value, note }) {
   const styles = {
@@ -193,13 +192,7 @@ function ReceivedFeedback({ items, stats, loading, onRefresh }) {
   }
 
   async function clearFeedback() {
-    // Delete the rows actually shown (after year filter), not only docs whose yearLevel field matches.
-    // Many submits store year only on className, so deleteMany({ yearLevel: "SY" }) deleted 0.
-    const targets = yearFilter === "All" ? items : afterYear;
-    const scope =
-      yearFilter === "All"
-        ? "ALL years (entire database)"
-        : `year ${yearFilter} only (${targets.length} visible item(s))`;
+    const scope = yearFilter === "All" ? "ALL years (entire database)" : `year ${yearFilter} only`;
     if (
       !confirm(
         `Permanently delete feedback for ${scope}? This cannot be undone.`
@@ -207,35 +200,19 @@ function ReceivedFeedback({ items, stats, loading, onRefresh }) {
     ) {
       return;
     }
-    if (!targets.length && yearFilter !== "All") {
-      alert("No feedback items in the current year filter to clear.");
-      return;
-    }
     setClearMsg("");
     try {
       const { api } = await import("@/lib/api");
-      const ids = targets
-        .map((f) => f._id || f.id)
-        .filter(Boolean)
-        .map((id) => String(id));
-      const d = await api("/api/feedback", {
-        method: "DELETE",
-        body: JSON.stringify({
-          clearAll: yearFilter === "All",
-          yearLevel: yearFilter === "All" ? null : yearFilter,
-          ids,
-        }),
-      });
-      const deleted = Number(d.deleted ?? d.deletedCount ?? 0);
+      const q = yearFilter !== "All" ? `?yearLevel=${encodeURIComponent(yearFilter)}` : "";
+      const d = await api(`/api/feedback${q}`, { method: "DELETE" });
       const msg =
         yearFilter === "All"
-          ? `All feedbacks cleared. Deleted ${deleted} record(s).`
-          : `Feedbacks cleared for ${yearFilter}. Deleted ${deleted} record(s).`;
+          ? `All feedbacks cleared. Deleted ${d.deleted} record(s).`
+          : `Feedbacks cleared for ${yearFilter}. Deleted ${d.deleted} record(s).`;
       setClearMsg(msg);
       alert(msg);
       setAgentSummary(null);
-      // Force reload list from API so UI matches Mongo
-      if (typeof onRefresh === "function") await onRefresh();
+      onRefresh?.();
     } catch (e) {
       alert(e.message || "Clear failed");
     }
@@ -444,13 +421,14 @@ function FeedbackAnalytics() {
   async function load() {
     setLoading(true);
     try {
-      // Always hit API host (VITE_API_URL on Render) — relative /api fails on bvdu-web
-      const d = await api(`/api/feedback?teacherId=${encodeURIComponent(teacherId)}&limit=500`);
+      const r = await fetch(`/api/feedback?teacherId=${encodeURIComponent(teacherId)}`, {
+        headers: { ...authHeaders() },
+      });
+      const d = await r.json();
       setItems(d.items || []);
       setStats(d.stats || { total: 0, good: 0, average: 0, bad: 0 });
       setTeacherSummary(d.teacherSummary || null);
-    } catch (e) {
-      console.warn("[feedback] load failed", e?.message || e);
+    } catch {
       setItems([]);
       setTeacherSummary(null);
     } finally {

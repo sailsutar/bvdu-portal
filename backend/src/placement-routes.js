@@ -4,6 +4,7 @@
  * Readiness is dynamic (recomputed on every read) until historical placement labels exist.
  */
 import { PlacementProfile, StudentBackground, AcademicRecord, writeAudit } from "./db.js";
+import { syncEmployabilityFromPlacementProfile } from "./employability-from-placement.js";
 import { computeTopicStrengthsFromMarks, topicGaps, suggestDomains } from "./placement-topics.js";
 import {
   normalizeYear as normYearCohort,
@@ -786,6 +787,27 @@ export function registerPlacementRoutes(app) {
         academicStatus: ac?.academicStatus || ac?.status || null,
         marks: ac?.marks || [],
       };
+      // Feed Employability Intelligence (S1) from the same form the student already filled
+      let employabilitySync = null;
+      try {
+        employabilitySync = await syncEmployabilityFromPlacementProfile(
+          prn,
+          doc.toObject ? doc.toObject() : doc,
+          prn
+        );
+        if (employabilitySync?.ok && employabilitySync.count > 0) {
+          console.log(
+            `[employability] synced ${employabilitySync.count} skills from placement profile ${prn}`,
+            employabilitySync.skillIds
+          );
+        } else {
+          console.warn(`[employability] sync result for ${prn}:`, employabilitySync);
+        }
+      } catch (err) {
+        console.warn("[employability] sync on placement save", err?.message || err);
+        employabilitySync = { ok: false, error: String(err?.message || err) };
+      }
+
       const e = enrich(base);
 
       // TADE only from Third Year / Last Year; FY/SY get preparation plan
@@ -821,7 +843,7 @@ export function registerPlacementRoutes(app) {
 
       await PlacementProfile.updateOne({ prn }, { $set: tadeSet });
       const fresh = await PlacementProfile.findOne({ prn }).lean();
-      res.json({ profile: enrich({ ...fresh, attendance: base.attendance, marks: base.marks }) });
+      res.json({ profile: enrich({ ...fresh, attendance: base.attendance, marks: base.marks }), employabilitySync: employabilitySync || null });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }

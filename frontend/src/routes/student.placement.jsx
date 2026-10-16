@@ -61,7 +61,16 @@ export default function StudentPlacement() {
       } catch {
         /* master sync best-effort */
       }
-      setMsg(submit ? "Submitted to placement coordinator." : "Draft saved.");
+      const sync = r.employabilitySync;
+      let syncNote = "";
+      if (sync?.ok && sync.count > 0) {
+        syncNote = " Your practice plan on Employability Intelligence was updated from Core skills.";
+      } else if (sync?.ok === false) {
+        syncNote = " (Practice-plan update failed — you can still open Employability later.)";
+      } else if (!submit) {
+        syncNote = " Tip: set Core skills (1–5) so Employability Intelligence can guide practice.";
+      }
+      setMsg((submit ? "Submitted to placement coordinator." : "Draft saved.") + syncNote);
     } catch (e) {
       setMsg(e.message);
     } finally {
@@ -80,8 +89,17 @@ export default function StudentPlacement() {
       <div>
         <h1 className="text-2xl font-bold text-navy">Placement profile</h1>
         <p className="text-sm text-muted-foreground">
-          Fill employability details for the placement cell. Linked to your academic Excel data where available.
+          This page is your <strong>placement data form</strong> for the college placement office.
+          Enter academics, skills, internships, and achievements here. Use{" "}
+          <strong>Submit to coordinator</strong> when ready. Skill ratings also update your separate{" "}
+          <strong>Employability Intelligence</strong> practice plan when you save — Employability Intelligence tracks your range; Career Coach has domain roadmaps. This form is only for the coordinator queue.
         </p>
+        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 leading-relaxed">
+          <strong className="text-navy">Two different pages:</strong>{" "}
+          <span className="font-medium">Placement profile</span> = data for coordinator / domain hints.{" "}
+          <span className="font-medium">Employability Intelligence</span> = your DSA roadmap, skill gaps, and next practice step.
+          Numbers named “readiness” on this form are for the placement office; the other page has its own preparation score.
+        </div>
         <div className="mt-2 flex flex-wrap gap-2 text-xs">
           <span className="rounded-full bg-muted px-3 py-1 font-semibold capitalize">Status: {p.status}</span>
           <span className={`rounded-full px-3 py-1 font-semibold ${p.consistency === "inconsistent" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>
@@ -90,8 +108,8 @@ export default function StudentPlacement() {
           <span className="rounded-full bg-sky-100 px-3 py-1 font-semibold text-sky-900">
             Completeness {p.completenessScore}%
           </span>
-          <span className="rounded-full bg-gold/40 px-3 py-1 font-semibold text-navy">
-            Readiness {p.readinessBand} ({p.readinessScore})
+          <span className="rounded-full bg-gold/40 px-3 py-1 font-semibold text-navy" title="Placement-office profile score (not Employability Intelligence)">
+            Placement profile score {p.readinessBand} ({p.readinessScore})
           </span>
           {p.employablePrediction && (
             <span className="rounded-full bg-navy px-3 py-1 font-semibold text-white">{p.employablePrediction}</span>
@@ -108,13 +126,13 @@ export default function StudentPlacement() {
             <span className="rounded-full bg-teal-100 px-3 py-1 font-semibold text-teal-900">Data: Your form</span>
           )}
           <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-800">
-            Mode: {p.placementMode === "prediction" || p.predictionEligible ? "Domain prediction (TY/LY)" : "Preparation (FY/SY)"}
+            Mode: {p.placementMode === "prediction" || p.predictionEligible ? "Domain hints (TY/LY)" : "Profile building (FY/SY)"}
           </span>
         </div>
         {(p.placementMode === "preparation" || p.preparation || (!p.predictionEligible && p.yearLevel !== "TY" && p.yearLevel !== "LY")) && (
           <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-sm">
             <p className="font-bold text-amber-950">
-              {p.preparation?.headline || "Preparation stage — full placement prediction starts from Third Year"}
+              {p.preparation?.headline || "Profile-building stage — full domain prediction is for Third Year / Last Year"}
             </p>
             <ul className="mt-2 list-inside list-disc text-xs text-amber-950/90">
               {(p.preparation?.explain || ["Fill skills, internships, and academics now so Third Year prediction is accurate."]).map((x, i) => (
@@ -213,7 +231,7 @@ export default function StudentPlacement() {
             ))}
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Active KT count greater than zero marks you as academically inconsistent for placement readiness.
+            Active KT count greater than zero marks you as academically inconsistent on this placement profile (coordinator view).
           </p>
         </SectionCard>
 
@@ -241,7 +259,7 @@ export default function StudentPlacement() {
         {(p.topicStrengths || p.topicBasicAvg != null) && (
           <SectionCard title="Company-basic topics from your subject marks (Excel)">
             <p className="mb-2 text-xs text-muted-foreground">
-              Derived from UT/subject marks uploaded by HOD — not self-rating. Used in employability prediction.
+              Derived from UT/subject marks uploaded by HOD — not self-rating. Used for domain hints on this profile (placement office), not the Employability practice page.
             </p>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-sm">
               {[
@@ -280,7 +298,7 @@ export default function StudentPlacement() {
           </SectionCard>
         )}
 
-        <SectionCard title="Core skills (1 = beginner, 5 = strong)">
+        <SectionCard title="Core skills (1 = beginner, 5 = strong) — also used on Employability page">
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {[
               ["skillDsa", "DSA"],

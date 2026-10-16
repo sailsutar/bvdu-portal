@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { api, clearAuth, getSession } from "../lib/api";
+import { api, clearAuth, getSession, getFocusPrn, setFocusPrn } from "../lib/api";
 import { showLocalDemoNotification, isExpoGo, registerForPushAsync } from "../lib/notifications";
 
 export default function HomeScreen({ navigation }) {
@@ -24,7 +24,12 @@ export default function HomeScreen({ navigation }) {
     try {
       setSession(await getSession());
       const r = await api("/api/parent/children");
-      setChildren(r.children || []);
+      let list = r.children || [];
+      const focus = await getFocusPrn();
+      if (focus) {
+        list = [...list].sort((a, b) => (String(a.prn) === focus ? -1 : String(b.prn) === focus ? 1 : 0));
+      }
+      setChildren(list);
     } catch (e) {
       setErr(e.message);
       if (e.status === 401) {
@@ -124,7 +129,10 @@ export default function HomeScreen({ navigation }) {
         renderItem={({ item }) => (
           <Pressable
             style={styles.card}
-            onPress={() => navigation.navigate("Child", { prn: item.prn, name: item.name })}
+            onPress={() => {
+              setFocusPrn(item.prn);
+              navigation.navigate("Child", { prn: item.prn, name: item.name });
+            }}
           >
             <Text style={styles.cardName}>{item.name || item.prn}</Text>
             <Text style={styles.cardMeta}>PRN {item.prn}</Text>

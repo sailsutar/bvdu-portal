@@ -20,6 +20,7 @@ import {
   GraduationCap,
   Activity,
   Target,
+  Map,
   Bot,
   SlidersHorizontal,
   Layers,
@@ -46,6 +47,8 @@ const studentNav = [
   { label: "Artificial Intelligence Insights", to: "/student/ai-insights", icon: Sparkles },
   { label: "Notifications", to: "/student/notifications", icon: Bell },
   { label: "Placement profile", to: "/student/placement", icon: Briefcase },
+  { label: "Employability Intelligence", to: "/student/employability", icon: Target },
+  { label: "Career Coach", to: "/student/career-coach", icon: Map },
   { label: "Settings", to: "/student/settings", icon: Settings },
 ];
 

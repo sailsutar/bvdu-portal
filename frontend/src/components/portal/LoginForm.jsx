@@ -61,7 +61,7 @@ function LoginForm({ title, subtitle, idLabel, idPlaceholder, redirectTo, role }
               }
               try {
                 await hydrateIntelligence();
-                await fetchCohortFromServer();
+                await fetchCohortFromServer({ force: true });
               } catch (_) {}
               navigate(redirectTo);
             } finally {

@@ -26,6 +26,8 @@ import PcAnalytics from "./routes/placement-coordinator.analytics.jsx";
 import PhAnalytics from "./routes/placement-head.analytics.jsx";
 import PhMock from "./routes/placement-head.mock.jsx";
 import PhFreeze from "./routes/placement-head.freeze.jsx";
+import StudentEmployability from "@/routes/student.employability";
+import StudentCareerCoach from "@/routes/student.career-coach";
 import StudentPlacement from "./routes/student.placement.jsx";
 
 import SysadminLayout from "./routes/sysadmin.jsx";
@@ -116,13 +118,13 @@ export default function App() {
         <Route path="queue" element={<PcQueue />} />
         <Route path="reminders" element={<PcReminders />} />
         <Route path="analytics" element={<PcAnalytics />} />
-      </Route>
+</Route>
       <Route path="/placement-head" element={<PlacementHeadLayout />}>
         <Route index element={<PhIndex />} />
         <Route path="profiles" element={<PhProfiles />} />
         <Route path="ready" element={<PhReady />} />
         <Route path="analytics" element={<PhAnalytics />} />
-        <Route path="mock" element={<PhMock />} />
+<Route path="mock" element={<PhMock />} />
         <Route path="freeze" element={<PhFreeze />} />
       </Route>
 
@@ -136,6 +138,8 @@ export default function App() {
         <Route index element={<StudentIndex />} />
         <Route path="profile" element={<StudentProfile />} />
         <Route path="placement" element={<StudentPlacement />} />
+        <Route path="employability" element={<StudentEmployability />} />
+        <Route path="career-coach" element={<StudentCareerCoach />} />
         <Route path="attendance" element={<StudentAttendance />} />
         <Route path="marks" element={<StudentMarks />} />
         <Route path="assignments" element={<StudentAssignments />} />
@@ -152,7 +156,7 @@ export default function App() {
         <Route path="students/:prn" element={<AdminStudentDetail />} />
         <Route path="learners" element={<AdminLearners />} />
         <Route path="intelligence" element={<AdminIntelligence />} />
-        <Route path="interventions" element={<AdminInterventions />} />
+<Route path="interventions" element={<AdminInterventions />} />
         <Route path="obe" element={<AdminObe />} />
         <Route path="model-health" element={<AdminModelHealth />} />
         <Route path="advanced" element={<AdminAdvanced />} />
@@ -174,7 +178,7 @@ export default function App() {
       <Route path="/tg" element={<TgLayout />}>
         <Route index element={<TgIndex />} />
         <Route path="students" element={<TgStudents />} />
-        <Route path="students/:prn" element={<TgStudentDetail />} />
+<Route path="students/:prn" element={<TgStudentDetail />} />
         <Route path="interventions" element={<TgInterventions />} />
         <Route path="agent" element={<TgAgent />} />
         <Route path="whatif" element={<TgWhatIf />} />

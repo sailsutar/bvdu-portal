@@ -4,6 +4,8 @@ import Constants from "expo-constants";
 const TOKEN_KEY = "bvu.parent.token";
 const SESSION_KEY = "bvu.parent.session";
 const API_BASE_KEY = "bvu.parent.apiBase";
+const FOCUS_PRN_KEY = "bvu.parent.focusPrn";
+const MAGIC_CHILDREN_KEY = "bvu.parent.magicChildren";
 
 /**
  * Production: set expo.extra.apiBaseUrl in app.json to your public HTTPS API
@@ -43,7 +45,7 @@ export async function saveAuth(token, session) {
 }
 
 export async function clearAuth() {
-  await AsyncStorage.multiRemove([TOKEN_KEY, SESSION_KEY]);
+  await AsyncStorage.multiRemove([TOKEN_KEY, SESSION_KEY, FOCUS_PRN_KEY, MAGIC_CHILDREN_KEY]);
 }
 
 export async function getToken() {
@@ -57,6 +59,15 @@ export async function getSession() {
   } catch {
     return null;
   }
+}
+
+export async function setFocusPrn(prn) {
+  if (!prn) await AsyncStorage.removeItem(FOCUS_PRN_KEY);
+  else await AsyncStorage.setItem(FOCUS_PRN_KEY, String(prn));
+}
+
+export async function getFocusPrn() {
+  return AsyncStorage.getItem(FOCUS_PRN_KEY);
 }
 
 export async function api(path, options = {}) {
@@ -91,4 +102,36 @@ export async function parentLogin(phone, password) {
   if (!res.ok) throw new Error(data.error || "Login failed");
   await saveAuth(data.token, data.session);
   return data;
+}
+
+/**
+ * Open from WhatsApp / email deep link — no password.
+ * Token is single-student focused; all phone-linked children still load after session.
+ */
+export async function redeemMagicToken(token) {
+  const base = await getApiBase();
+  const res = await fetch(`${base}/api/parent/magic-link/redeem`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: String(token || "").trim() }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Could not open private link");
+  await saveAuth(data.token, { ...(data.session || {}), via: "magic_link", focusPrn: data.focusPrn });
+  if (data.focusPrn) await setFocusPrn(data.focusPrn);
+  if (Array.isArray(data.children)) {
+    await AsyncStorage.setItem(MAGIC_CHILDREN_KEY, JSON.stringify(data.children));
+  }
+  return data;
+}
+
+/** Extract magic token from bvuparent://open?token=… or https://…?token=… */
+export function extractMagicTokenFromUrl(url) {
+  if (!url) return null;
+  try {
+    const s = String(url);
+    const m = s.match(/[?&#]token=([^&]+)/i) || s.match(/token=([^&\s]+)/i);
+    if (m?.[1]) return decodeURIComponent(m[1]);
+  } catch (_) {}
+  return null;
 }

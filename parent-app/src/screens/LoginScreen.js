@@ -15,6 +15,8 @@ import {
   getApiBase,
   getDefaultApiBase,
   setApiBase,
+  redeemMagicToken,
+  extractMagicTokenFromUrl,
 } from "../lib/api";
 import { registerForPushAsync, showLocalDemoNotification } from "../lib/notifications";
 
@@ -26,6 +28,7 @@ export default function LoginScreen({ onLoggedIn }) {
   const [err, setErr] = useState("");
   const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
+  const [magicPaste, setMagicPaste] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -80,6 +83,43 @@ export default function LoginScreen({ onLoggedIn }) {
         {!!err && <Text style={styles.err}>{err}</Text>}
         {!!info && <Text style={styles.info}>{info}</Text>}
 
+
+        <Text style={[styles.label, { marginTop: 8 }]}>Private link from college (optional)</Text>
+        <TextInput
+          style={styles.input}
+          value={magicPaste}
+          onChangeText={setMagicPaste}
+          autoCapitalize="none"
+          autoCorrect={false}
+          placeholder="Paste bvuparent:// link or token"
+          placeholderTextColor="#94a3b8"
+        />
+        <Pressable
+          style={[styles.btn, { backgroundColor: "#38bdf8", marginBottom: 12 }, busy && styles.btnDisabled]}
+          disabled={busy}
+          onPress={async () => {
+            setErr("");
+            setInfo("");
+            setBusy(true);
+            try {
+              if (serverUrl && serverUrl.trim()) await setApiBase(serverUrl.trim());
+              const tok = extractMagicTokenFromUrl(magicPaste) || magicPaste.trim();
+              if (!tok) throw new Error("Paste the full link from WhatsApp/email");
+              await redeemMagicToken(tok);
+              setInfo("Opened without password");
+              onLoggedIn?.();
+            } catch (e) {
+              setErr(e.message || "Link failed");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <Text style={styles.btnText}>Open private link</Text>
+        </Pressable>
+        <Text style={{ color: "#94a3b8", fontSize: 12, marginBottom: 16, textAlign: "center" }}>
+          — or sign in with mobile —
+        </Text>
         <Text style={styles.label}>Parent mobile</Text>
         <TextInput
           style={styles.input}

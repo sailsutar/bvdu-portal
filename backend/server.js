@@ -36,12 +36,14 @@ import { registerCohortRoutes } from "./src/cohort-routes.js";
 import { registerAdminMasterRoutes } from "./src/admin-master-routes.js";
 import { registerPlacementRoutes } from "./src/placement-routes.js";
 import { registerParentRoutes } from "./src/parent-routes.js";
+import { registerEmployabilityRoutes } from "./src/employability-routes.js";
 import { ensureSystemAdmin, ensurePlacementUsers } from "./src/db.js";
 import { resolveStudentProfile } from "./src/sample-cohort.js";
 import { parseAcademicGroup } from "./src/academic-group.js";
 import {
   handleParentIncoming,
   buildParentNotifyText,
+  enrichParentNotifyText,
   buildHelpText,
   placeAutomatedCall,
   normalizePhone,
@@ -80,8 +82,6 @@ function corsOriginAllowed(origin) {
   return false;
 }
 app.set("trust proxy", 1);
-// Disable ETag so browsers never get HTTP 304 for cohort / student JSON after uploads
-app.set("etag", false);
 app.use(
   cors({
     origin: (origin, cb) => {
@@ -537,43 +537,13 @@ app.get("/api/feedback/summary", requireAdmin, async (req, res) => {
 });
 
 
-/** Clear feedback (all, by yearLevel, or by explicit document ids) — admin only */
+/** Clear feedback (all or by yearLevel) — admin only; removes from MongoDB */
 app.delete("/api/feedback", requireAdmin, async (req, res) => {
   try {
-    const body = req.body && typeof req.body === "object" ? req.body : {};
-    const yearLevel =
-      (req.query.yearLevel && String(req.query.yearLevel)) ||
-      (body.yearLevel != null && body.yearLevel !== "" ? String(body.yearLevel) : null);
-    const ids = Array.isArray(body.ids) ? body.ids.map((x) => String(x)).filter(Boolean) : [];
-    const clearAll = body.clearAll === true;
-
-    let filter;
-    if (ids.length) {
-      filter = {
-        $or: [{ id: { $in: ids } }, { _id: { $in: ids.filter((id) => /^[a-fA-F0-9]{24}$/.test(id)) } }],
-      };
-    } else if (yearLevel && yearLevel !== "All") {
-      const y = String(yearLevel).toUpperCase();
-      filter = {
-        $or: [
-          { yearLevel: y },
-          { yearLevel: String(yearLevel) },
-          { className: new RegExp(y, "i") },
-          { displayGroup: new RegExp(y, "i") },
-        ],
-      };
-    } else if (clearAll || !yearLevel || yearLevel === "All") {
-      filter = {};
-    } else {
-      filter = {};
-    }
-
+    const yearLevel = req.query.yearLevel ? String(req.query.yearLevel) : null;
+    const filter = yearLevel && yearLevel !== "All" ? { yearLevel } : {};
     const result = await Feedback.deleteMany(filter);
-    await writeAudit(req.auth.id, "feedback.clear", {
-      deleted: result.deletedCount,
-      yearLevel: yearLevel || "all",
-      byIds: ids.length,
-    });
+    await writeAudit(req.auth.id, "feedback.clear", { deleted: result.deletedCount, yearLevel: yearLevel || "all" });
     res.json({ ok: true, deleted: result.deletedCount });
   } catch (e) {
     res.status(500).json({ error: String(e.message || e) });
@@ -1234,7 +1204,7 @@ app.post("/api/parent-bot/notify-preview", requireTeacherGuide, async (req, res)
     if (!prn) return res.status(400).json({ error: "prn required" });
     const student = await AcademicRecord.findOne({ prn }).lean();
     if (!student) return res.status(404).json({ error: "Student not found in cohort" });
-    const text = buildParentNotifyText(student, { mode });
+    const text = typeof enrichParentNotifyText === 'function' ? enrichParentNotifyText(student, { mode }) : buildParentNotifyText(student, { mode });
     res.json({ ok: true, prn, phone: student.phone || null, text, languages: ["en", "hi"] });
   } catch (e) {
     res.status(500).json({ error: String(e.message || e) });
@@ -1251,7 +1221,7 @@ app.post("/api/parent-bot/notify", requireTeacherGuide, async (req, res) => {
     if (!prn) return res.status(400).json({ error: "prn required" });
     const student = await AcademicRecord.findOne({ prn }).lean();
     if (!student) return res.status(404).json({ error: "Student not found" });
-    const text = buildParentNotifyText(student, { mode });
+    const text = typeof enrichParentNotifyText === 'function' ? enrichParentNotifyText(student, { mode }) : buildParentNotifyText(student, { mode });
     const to = req.body?.to || (channel === "email" ? student.email : student.phone);
     if (!to) {
       return res.status(400).json({ error: "No parent contact on student (phone/email)." });
@@ -1308,6 +1278,7 @@ registerCohortRoutes(app);
 registerAdminMasterRoutes(app);
 registerPlacementRoutes(app);
 registerParentRoutes(app);
+registerEmployabilityRoutes(app);
 
 function redactMongoUri(uri) {
   if (!uri) return "(not set — using default localhost)";

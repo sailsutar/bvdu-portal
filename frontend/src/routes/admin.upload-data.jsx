@@ -73,7 +73,7 @@ async function syncRosterToServer(uploadList, richStudents = null) {
         /* ignore */
       }
     });
-    await fetchCohortFromServer();
+    await fetchCohortFromServer({ force: true });
     const res = await fetch(`${API_BASE}/api/auth/sync-students`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },

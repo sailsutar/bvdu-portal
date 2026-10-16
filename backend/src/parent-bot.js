@@ -11,6 +11,7 @@
  */
 
 import { AcademicRecord, StudentBackground } from "./db.js";
+import { appendMagicLinkFooter } from "./parent-magic-link.js";
 
 const PASS_UT = 8;
 
@@ -126,7 +127,7 @@ export function buildMarksReply(student) {
 }
 
 /** Bilingual outbound notify after HOD approval */
-export function buildParentNotifyText(student, { mode = "full" } = {}) {
+export function buildParentNotifyText(student, { mode = "full", includeAppLink = false } = {}) {
   const name = student.name || "Student";
   const prn = student.prn || "";
   const att =
@@ -165,6 +166,14 @@ export function buildParentNotifyText(student, { mode = "full" } = {}) {
     `WhatsApp bot: type attendance or marks for live data.\n` +
     `बॉट: attendance या marks लिखें।`
   );
+}
+
+
+/** Notify text + optional passwordless Parent app deep link */
+export function enrichParentNotifyText(student, { mode = "full", includeAppLink = true } = {}) {
+  const base = buildParentNotifyText(student, { mode, includeAppLink: false });
+  if (!includeAppLink) return base;
+  return appendMagicLinkFooter(base, student);
 }
 
 export async function findStudentsByParentPhone(fromPhone) {
