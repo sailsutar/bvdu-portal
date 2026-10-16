@@ -21,7 +21,7 @@ import {
 import { authHeaders } from "@/lib/auth";
 import { NoData } from "@/components/portal/NoData";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const API_BASE = import.meta.env.VITE_API_URL || "";
 
 export default function AdminAdvanced() {
   const { students: allStudents } = useDerived();

@@ -44,7 +44,7 @@ import { recordOutcome, updateIntervention } from "@/lib/academic-intelligence";
 import { currentStatusOf } from "@/lib/ml-predict";
 import { NoData } from "@/components/portal/NoData";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const API_BASE = import.meta.env.VITE_API_URL || "";
 
 const STATUS_OPTIONS = ["At Risk", "Average", "Good"];
 

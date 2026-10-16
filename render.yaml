@@ -1,0 +1,46 @@
+services:
+  # ── Express backend ──
+  - type: web
+    name: bvu-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4000"
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: ML_SERVICE_URL
+        sync: false
+      - key: PARENT_DEFAULT_PASSWORD
+        sync: false
+      - key: STUDENT_DEFAULT_PASSWORD
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: TEACHER_GUIDE_PASSWORD
+        sync: false
+      - key: TOKEN_TTL_HOURS
+        value: "12"
+      - key: JSON_BODY_LIMIT
+        value: "40mb"
+
+  # ── FastAPI ML service ──
+  - type: web
+    name: bvu-ml
+    runtime: docker
+    plan: free
+    dockerfilePath: deploy/Dockerfile.ml
+    healthCheckPath: /health
+    envVars:
+      - key: SENTIMENT_MODEL_ID
+        value: cardiffnlp/twitter-roberta-base-sentiment-latest
